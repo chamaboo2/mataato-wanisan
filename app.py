@@ -1,0 +1,296 @@
+import html
+import time
+from datetime import datetime
+from pathlib import Path
+
+import streamlit as st
+
+
+st.set_page_config(page_title="またあとワニさん", page_icon="🐊", layout="centered")
+ASSETS = Path(__file__).parent / "assets"
+
+
+st.markdown(
+    """
+<style>
+:root{--cream:#fbf7ed;--paper:#fffdf7;--green:#667a3c;--dark:#4b3a2d;--yellow:#f1c85b;--line:#e5ddca;--soft:#f2ecdc}
+.stApp{background:var(--cream);color:var(--dark)}
+.block-container{max-width:720px;padding:1rem 1rem 6rem}
+h1,h2,h3,p,div,button,input,textarea{font-family:"Hiragino Maru Gothic ProN","Yu Gothic",sans-serif}
+[data-testid="stHeader"]{background:transparent}
+.hero{background:var(--paper);border:1px solid var(--line);border-radius:24px;padding:14px 18px;text-align:center;box-shadow:0 5px 18px #6b5a3a10}
+.hero img{max-width:390px;width:100%;border-radius:18px}.hero p{margin:.25rem;color:#766a59}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:14px 16px;margin:10px 0}
+.name{font-weight:700;color:var(--dark)}.meta{font-size:.78rem;color:#8a806f}.body{line-height:1.8;margin:.55rem 0}
+.pill{display:inline-block;background:#eef1df;color:#58683b;padding:4px 10px;border-radius:999px;font-size:.82rem;margin:2px}
+.reply{background:#fff4ce;border:1px solid #ebd88e;border-radius:14px;padding:10px 12px;color:#6c5831}
+.mine{border-left:5px solid var(--green)}
+.letter{background:#fffdf8;border:1px solid #ded3bd;border-radius:18px;padding:14px;margin:9px 0}
+.stButton>button,.stFormSubmitButton>button{border-radius:999px;border:0;background:var(--green);color:white;font-weight:700;min-height:42px}
+.stButton>button:hover,.stFormSubmitButton>button:hover{background:#53662f;color:white}
+[data-testid="stBottomBlockContainer"]{background:var(--cream)}
+.small{font-size:.82rem;color:#817765}.center{text-align:center}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+
+def init_state():
+    defaults = {
+        "page": "新しい日記",
+        "display_name": "こもれび星",
+        "icon": "116748_0(1).jpg",
+        "bio": "散歩と本と、静かな夜が好きです。",
+        "likes": ["散歩", "本", "喫茶店"],
+        "letter_note": "返事はゆっくりでも大丈夫です。",
+        "search_visible": True,
+        "mute_words": ["政治"],
+        "muted_people": set(),
+        "blocked_people": set(),
+        "reaction_log": [],
+        "reply_status": {},
+        "sent_letters": [],
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+    if "diaries" not in st.session_state:
+        st.session_state.diaries = [
+            {"id": 1, "name": "すみれの風", "icon": "116744_0(1).jpg", "when": "今日 9:10", "text": "朝の散歩で白い花を見つけました。名前は分からないけれど、風に揺れてきれいでした。", "photo": "116744_0(1).jpg", "scope": "みんな", "reaction": None},
+            {"id": 2, "name": "月とひばり", "icon": "116740_0(1).jpg", "when": "昨日 22:40", "text": "読みかけの本を、今夜やっと読み終えました。少し余韻にひたっています。", "photo": "116740_0(1).jpg", "scope": "みんな", "reaction": None},
+            {"id": 3, "name": "あさぐも", "icon": "116739_0(1).jpg", "when": "昨日 7:20", "text": "雲の形が大きな船みたいでした。", "photo": "116739_0(1).jpg", "scope": "みんな", "reaction": None},
+        ]
+    if "threads" not in st.session_state:
+        st.session_state.threads = {
+            "すみれの風": [
+                ("them", "この前教えてくれた本、読み始めました。", "昨日 20:12"),
+                ("me", "うれしい。急がず読んでみてください。", "昨日 21:03"),
+                ("them", "ありがとう。また感想を送ります。", "今日 8:42"),
+            ],
+            "月とひばり": [("them", "週末、あの喫茶店に行きました。", "月曜 18:20")],
+        }
+
+
+init_state()
+
+
+def safe(value):
+    return html.escape(str(value)).replace("\n", "<br>")
+
+
+def icon_path(filename):
+    path = ASSETS / filename
+    return str(path) if path.exists() else None
+
+
+def header():
+    logo = ASSETS / "02_______________________1024(1).png"
+    if logo.exists():
+        st.markdown('<div class="hero">', unsafe_allow_html=True)
+        st.image(str(logo), use_container_width=True)
+        st.markdown("<p>返信の速さも、見るものも、距離も、自分で選べる場所。</p></div>", unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="hero"><h1>またあとワニさん</h1><p>「あとで」ができる。心、軽やか。</p></div>', unsafe_allow_html=True)
+
+
+def navigate():
+    items = ["新しい日記", "みんなの日記", "おてがみ", "人をさがす", "わたし"]
+    st.session_state.page = st.radio("メニュー", items, horizontal=True, label_visibility="collapsed", key="nav")
+
+
+def diary_card(post):
+    if post["name"] in st.session_state.muted_people or post["name"] in st.session_state.blocked_people:
+        return
+    lower = post["text"].lower()
+    if any(w.strip().lower() in lower for w in st.session_state.mute_words if w.strip()):
+        return
+    cols = st.columns([1, 5])
+    with cols[0]:
+        if icon_path(post["icon"]):
+            st.image(icon_path(post["icon"]), use_container_width=True)
+    with cols[1]:
+        st.markdown(f'<div class="name">{safe(post["name"])}</div><div class="meta">{safe(post["when"])}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="body">{safe(post["text"])}</div>', unsafe_allow_html=True)
+    if post.get("photo") and icon_path(post["photo"]):
+        st.image(icon_path(post["photo"]), use_container_width=True)
+    labels = ["いいね", "わかる", "おつかれさま", "すてき"]
+    picked = st.segmented_control("リアクション", labels, key=f"react_{post['id']}", label_visibility="collapsed")
+    if picked and picked != post.get("reaction"):
+        post["reaction"] = picked
+        st.session_state.reaction_log.append((post["name"], picked, post["id"]))
+        st.toast(f"「{picked}」を届けました。数は公開されません。")
+
+
+def new_diary():
+    st.subheader("新しい日記")
+    st.caption("一言でも、写真だけでも。書きたい長さでどうぞ。")
+    with st.form("diary_form", clear_on_submit=True):
+        text = st.text_area("今日のこと", placeholder="いま残しておきたいことはありますか？", height=150)
+        photo = st.file_uploader("写真（なくても大丈夫です）", type=["jpg", "jpeg", "png"])
+        scope = st.radio("公開範囲", ["みんな", "自分だけ"], horizontal=True)
+        submitted = st.form_submit_button("日記をしまう")
+    if submitted:
+        if not text.strip() and photo is None:
+            st.warning("文章か写真のどちらかを入れてください。")
+        else:
+            st.session_state.diaries.insert(0, {"id": int(time.time()*1000), "name": st.session_state.display_name, "icon": st.session_state.icon, "when": "たった今", "text": text or "（写真の日記）", "photo": None, "scope": scope, "reaction": None})
+            st.success("日記をしまいました。" if scope == "自分だけ" else "日記を公開しました。")
+    st.markdown("### わたしの最近の日記")
+    mine = [x for x in st.session_state.diaries if x["name"] == st.session_state.display_name]
+    if not mine:
+        st.info("まだ日記はありません。")
+    for p in mine[:3]:
+        st.markdown(f'<div class="card mine"><span class="pill">{safe(p["scope"])}</span><div class="body">{safe(p["text"])}</div><div class="meta">{safe(p["when"])}</div></div>', unsafe_allow_html=True)
+
+
+def timeline():
+    st.subheader("みんなの日記")
+    st.caption("おすすめ順ではなく、新しい順に並んでいます。")
+    shown = 0
+    for post in st.session_state.diaries:
+        if post["scope"] != "みんな" or post["name"] == st.session_state.display_name:
+            continue
+        before = shown
+        text = post["text"].lower()
+        if post["name"] not in st.session_state.muted_people | st.session_state.blocked_people and not any(w.lower() in text for w in st.session_state.mute_words if w):
+            shown += 1
+        if before != shown:
+            with st.container(border=True):
+                diary_card(post)
+    if shown == 0:
+        st.info("表示できる新しい日記はありません。見ないキーワードの設定も確認できます。")
+
+
+STATUS = {
+    "まだ決めない": "届いています",
+    "いま返す": "いま返すみたい",
+    "ちょっとあと": "ちょっとあと（20分くらい）に返すみたい",
+    "あとで": "あとで（数時間くらい）返すみたい",
+    "明日返す": "明日くらいに返すみたい",
+    "少し考えたい": "少し考えてから返すみたい",
+}
+
+
+def letters():
+    st.subheader("おてがみ")
+    names = [n for n in st.session_state.threads if n not in st.session_state.blocked_people]
+    if not names:
+        st.info("まだ、やりとりはありません。")
+        return
+    person = st.selectbox("やりとりする人", names)
+    current = st.session_state.reply_status.get(person, "まだ決めない")
+    st.markdown(f'<div class="reply">あなたの予定：{safe(STATUS[current])}</div>', unsafe_allow_html=True)
+    choice = st.selectbox("返信の予定を伝える", list(STATUS), index=list(STATUS).index(current))
+    if choice != current:
+        st.session_state.reply_status[person] = choice
+        st.toast("返信予定をやわらかく伝えました。あとから変更できます。")
+    st.markdown("#### やりとり")
+    for who, body, when in st.session_state.threads[person]:
+        label = person if who == "them" else st.session_state.display_name
+        css = "letter" if who == "them" else "letter mine"
+        st.markdown(f'<div class="{css}"><div class="name">{safe(label)}</div><div class="body">{safe(body)}</div><div class="meta">{safe(when)}</div></div>', unsafe_allow_html=True)
+    with st.form("letter_form", clear_on_submit=True):
+        body = st.text_area("手紙を書く", placeholder="急がず、伝えたい言葉をどうぞ。", height=120)
+        sent = st.form_submit_button("ワニさんに手紙をあずける")
+    if sent and body.strip():
+        holder = st.empty()
+        holder.markdown('<div class="card center">✉️　🐊<br><span class="small">ワニさんが手紙を背中に乗せました</span></div>', unsafe_allow_html=True)
+        time.sleep(.45)
+        holder.markdown('<div class="card center">　　🐊💨<br><span class="small">てちてち……</span></div>', unsafe_allow_html=True)
+        time.sleep(.45)
+        st.session_state.threads[person].append(("me", body.strip(), datetime.now().strftime("今日 %H:%M")))
+        st.session_state.reply_status[person] = "まだ決めない"
+        holder.empty()
+        st.success("手紙を届けました。")
+        time.sleep(.2)
+        st.rerun()
+
+
+PEOPLE = [
+    ("すみれ", "116744_0(1).jpg", "花と料理が好きです。", "お返事は夜になることが多いです。"),
+    ("すみれの風", "116747_0(1).jpg", "散歩中に見つけたものを日記にしています。", "ゆっくり考えて返します。"),
+    ("月とひばり", "116740_0(1).jpg", "本と静かな喫茶店が好きです。", "短い手紙もうれしいです。"),
+    ("あさぐも", "116739_0(1).jpg", "空の写真をよく撮ります。", "あとで、ええんやで。"),
+]
+
+
+def search_people():
+    st.subheader("名前で人をさがす")
+    st.caption("おすすめは表示しません。話してみたい人を自分で探せます。")
+    q = st.text_input("名前", placeholder="例：すみれ")
+    if not q:
+        st.info("名前の一部を入力してください。")
+        return
+    results = [p for p in PEOPLE if q.lower() in p[0].lower() and p[0] not in st.session_state.blocked_people]
+    if not results:
+        st.info("見つかりませんでした。")
+    for name, icon, bio, note in results:
+        with st.container(border=True):
+            c1, c2 = st.columns([1, 4])
+            with c1: st.image(icon_path(icon), use_container_width=True)
+            with c2:
+                st.markdown(f"**{name}**  \n{bio}  \n<span class='small'>お手紙について：{note}</span>", unsafe_allow_html=True)
+            if st.button("話しかける", key=f"talk_{name}"):
+                st.session_state.threads.setdefault(name, [])
+                st.session_state.page = "おてがみ"
+                st.toast(f"{name}さんとの、おてがみを開きました。")
+
+
+def profile():
+    st.subheader("わたし")
+    tabs = st.tabs(["プロフィール", "見るもの・距離", "リアクション"])
+    with tabs[0]:
+        icon_files = [f"1167{i}_0(1).jpg" for i in range(39,49)]
+        with st.form("profile_form"):
+            name = st.text_input("名前", st.session_state.display_name)
+            icon = st.selectbox("自然アイコン", icon_files, index=icon_files.index(st.session_state.icon) if st.session_state.icon in icon_files else 0)
+            if icon_path(icon): st.image(icon_path(icon), width=120)
+            bio = st.text_area("ひとこと", st.session_state.bio)
+            likes = st.text_input("好きなもの（最大5個・読点区切り）", "、".join(st.session_state.likes))
+            note = st.text_area("お手紙についての一言", st.session_state.letter_note)
+            visible = st.toggle("名前検索に表示する", st.session_state.search_visible)
+            save = st.form_submit_button("プロフィールを保存")
+        if save:
+            st.session_state.display_name = name.strip() or st.session_state.display_name
+            st.session_state.icon = icon
+            st.session_state.bio = bio
+            st.session_state.likes = [x.strip() for x in likes.replace(",", "、").split("、") if x.strip()][:5]
+            st.session_state.letter_note = note
+            st.session_state.search_visible = visible
+            st.success("保存しました。")
+    with tabs[1]:
+        words = st.text_area("見ないキーワード（1行に1つ）", "\n".join(st.session_state.mute_words), help="その言葉を含む公開日記を、あなただけに表示しません。投稿者には通知されません。")
+        if st.button("見ないキーワードを保存"):
+            st.session_state.mute_words = [x.strip() for x in words.splitlines() if x.strip()]
+            st.success("保存しました。")
+        st.markdown("#### ミュート・ブロック")
+        target = st.selectbox("相手", [p[0] for p in PEOPLE])
+        c1, c2 = st.columns(2)
+        with c1:
+            muted = target in st.session_state.muted_people
+            if st.button("ミュートを解除" if muted else "静かにミュート", key="mute"):
+                (st.session_state.muted_people.discard if muted else st.session_state.muted_people.add)(target)
+                st.rerun()
+        with c2:
+            blocked = target in st.session_state.blocked_people
+            if st.button("ブロックを解除" if blocked else "ブロック", key="block"):
+                (st.session_state.blocked_people.discard if blocked else st.session_state.blocked_people.add)(target)
+                st.rerun()
+        st.caption("ミュートやブロックは相手に通知されません。通報は動作確認版では送信されません。")
+    with tabs[2]:
+        st.caption("受け取ったリアクションは投稿者本人だけが確認できます。公開数やランキングはありません。")
+        st.info("動作確認版では、自分の日記への受信例をここに表示する予定です。")
+
+
+header()
+navigate()
+page = st.session_state.page
+if page == "新しい日記": new_diary()
+elif page == "みんなの日記": timeline()
+elif page == "おてがみ": letters()
+elif page == "人をさがす": search_people()
+else: profile()
+
+st.markdown('<div class="center small" style="margin-top:32px">あとで、ええんやで 🐊</div>', unsafe_allow_html=True)

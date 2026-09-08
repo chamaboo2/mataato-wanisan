@@ -19,7 +19,7 @@ st.markdown(
 h1,h2,h3,p,div,button,input,textarea{font-family:"Hiragino Maru Gothic ProN","Yu Gothic",sans-serif}
 [data-testid="stHeader"]{background:transparent}
 .hero{background:var(--paper);border:1px solid var(--line);border-radius:24px;padding:14px 18px;text-align:center;box-shadow:0 5px 18px #6b5a3a10}
-.hero img{max-width:390px;width:100%;border-radius:18px}.hero p{margin:.25rem;color:#766a59}
+.hero img{max-width:390px;width:100%;border-radius:18px}.hero p{margin:.25rem;color:#766a59}.concept{font-size:1.05rem;font-weight:700;color:#53662f;margin-top:8px}
 .card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:14px 16px;margin:10px 0}
 .name{font-weight:700;color:var(--dark)}.meta{font-size:.78rem;color:#8a806f}.body{line-height:1.8;margin:.55rem 0}
 .pill{display:inline-block;background:#eef1df;color:#58683b;padding:4px 10px;border-radius:999px;font-size:.82rem;margin:2px}
@@ -90,13 +90,13 @@ def header():
     if logo.exists():
         st.markdown('<div class="hero">', unsafe_allow_html=True)
         st.image(str(logo), use_container_width=True)
-        st.markdown("<p>返信の速さも、見るものも、距離も、自分で選べる場所。</p></div>", unsafe_allow_html=True)
+        st.markdown("<div class='concept'>人との距離も、ことばの速さも、自分で決める。</div><p>「あとで」ができる。心、軽やか。<br>つながることを、急がない。</p></div>", unsafe_allow_html=True)
     else:
         st.markdown('<div class="hero"><h1>またあとワニさん</h1><p>「あとで」ができる。心、軽やか。</p></div>', unsafe_allow_html=True)
 
 
 def navigate():
-    items = ["新しい日記", "みんなの日記", "おてがみ", "人をさがす", "わたし"]
+    items = ["新しい日記", "みんなの日記", "おてがみ", "人をさがす", "ワニ園だより", "わたし"]
     st.session_state.page = st.radio("メニュー", items, horizontal=True, label_visibility="collapsed", key="nav")
 
 
@@ -284,6 +284,33 @@ def profile():
         st.info("動作確認版では、自分の日記への受信例をここに表示する予定です。")
 
 
+def garden_news():
+    st.subheader("ワニ園だより")
+    st.caption("またあとワニ園 園長が、アプリのことや考えていることを、ぽつぽつ書きます。")
+    category = st.selectbox("読みたい棚", ["すべて", "園長室から", "飼育日誌", "園内のおしらせ", "ワニの観察記録", "考え中です"])
+    articles = [
+        ("園長室から", "人との距離も、ことばの速さも、自分で決める。", "このワニ園は、ゆっくりすることを押しつける場所ではありません。今返すことも、あとで返すことも、少し離れることも、自分で選べる場所にしたいと考えています。"),
+        ("園長室から", "なぜ、既読を置かないのか", "読んだことが、そのまま返事の催促にならないように。代わりに、返せそうな頃をやわらかく伝えられる形を育てています。"),
+        ("園長室から", "おすすめ機能を作らない理由", "何を見るかまでアプリが決めず、自分で新しい日記を見たり、名前から人を探したりできるようにしています。"),
+        ("飼育日誌", "動作確認版ができました", "日記、おてがみ、返信予定、名前検索、見ないキーワードなど、ワニ園の基本的な過ごし方を試せるようになりました。"),
+        ("ワニの観察記録", "手を背中にのせるワニ", "手紙は口にくわえず、ずんぐりした背中にのせて、てちてち運びます。急がないけれど、ちゃんと届けます。"),
+        ("考え中です", "木の実のこと", "いつの間にか少し貯まり、自分の居場所を好みに整えられる小さなお楽しみを考えています。ノルマや連続記録にはしません。"),
+    ]
+    visible = articles if category == "すべて" else [a for a in articles if a[0] == category]
+    for cat, title, body in visible:
+        with st.expander(title):
+            st.markdown(f'<span class="pill">{safe(cat)}</span><div class="body">{safe(body)}</div><div class="meta">またあとワニ園　園長</div>', unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("#### 木の実について 🌰")
+    st.caption("将来機能・現在はまだ貯まりません")
+    st.markdown("""
+    普通にワニ園で過ごしていたら、いつの間にか少し貯まっているお楽しみです。
+    将来はワニさんの色、便箋、封筒、壁紙など、自分の居場所を整えるために使えます。
+    所持数やランキングは他人に公開せず、ミッションやストリークも設けません。
+    """)
+    st.info("園長へのお手紙は将来追加予定です。公開コメント欄は設けません。")
+
+
 header()
 navigate()
 page = st.session_state.page
@@ -291,6 +318,7 @@ if page == "新しい日記": new_diary()
 elif page == "みんなの日記": timeline()
 elif page == "おてがみ": letters()
 elif page == "人をさがす": search_people()
+elif page == "ワニ園だより": garden_news()
 else: profile()
 
 st.markdown('<div class="center small" style="margin-top:32px">あとで、ええんやで 🐊</div>', unsafe_allow_html=True)

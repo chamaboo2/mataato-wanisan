@@ -116,29 +116,27 @@ init_state()
 
 
 def onboarding():
-    logo = ASSETS / "01_________________________________1024(1).png"
+    logo = ASSETS / "02_______________________1024(1).png"
     if logo.exists():
-        st.image(str(logo), use_container_width=True)
+        left, middle, right = st.columns([1, 3, 1])
+        with middle:
+            st.image(str(logo), use_container_width=True)
     st.markdown("<div class='center'><h2>あなたに、こんな名前はいかが？</h2></div>", unsafe_allow_html=True)
     if not st.session_state.get("custom_name_mode", False):
         st.markdown(f"<div class='hero'><h1>{safe(st.session_state.proposed_name)}</h1></div>", unsafe_allow_html=True)
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            if st.button("この名前にする", use_container_width=True):
-                st.session_state.display_name = st.session_state.proposed_name
-                st.session_state.onboarding_complete = True
-                st.rerun()
-        with c2:
-            if st.button("もうひとつ見る", use_container_width=True):
-                history = (st.session_state.previous_names + [st.session_state.proposed_name])[-12:]
-                choices = [name for name in NATURAL_NAMES if name not in history]
-                st.session_state.previous_names = history
-                st.session_state.proposed_name = random.choice(choices or NATURAL_NAMES)
-                st.rerun()
-        with c3:
-            if st.button("自分でつける", use_container_width=True):
-                st.session_state.custom_name_mode = True
-                st.rerun()
+        if st.button("この名前にする", use_container_width=True, type="primary"):
+            st.session_state.display_name = st.session_state.proposed_name
+            st.session_state.onboarding_complete = True
+            st.rerun()
+        if st.button("もうひとつ見る", use_container_width=True):
+            history = (st.session_state.previous_names + [st.session_state.proposed_name])[-12:]
+            choices = [name for name in NATURAL_NAMES if name not in history]
+            st.session_state.previous_names = history
+            st.session_state.proposed_name = random.choice(choices or NATURAL_NAMES)
+            st.rerun()
+        if st.button("自分でつける", use_container_width=True):
+            st.session_state.custom_name_mode = True
+            st.rerun()
     else:
         custom = st.text_input("つけたい名前", placeholder="呼ばれたい名前を入力してください")
         c1, c2 = st.columns(2)

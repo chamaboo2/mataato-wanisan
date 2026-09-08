@@ -1,5 +1,9 @@
 import html
+import random
+import secrets
+import string
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -8,6 +12,25 @@ import streamlit as st
 
 st.set_page_config(page_title="またあとワニさん", page_icon="🐊", layout="centered")
 ASSETS = Path(__file__).parent / "assets"
+
+NATURAL_NAMES = [
+    "すみれ", "なずな", "れんげ", "つばき", "あざみ", "ききょう", "すずらん", "あやめ", "りんどう", "ひなげし",
+    "つゆくさ", "たんぽぽ", "よもぎ", "すすき", "つくし", "くるみ", "かえで", "もみじ", "若葉", "青葉",
+    "若草", "さくら", "なのはな", "ミモザ", "クローバー", "ラベンダー", "ネモフィラ", "オリーブ",
+    "つばめ", "ひばり", "すずめ", "こまどり", "かわせみ", "めじろ", "うぐいす", "ちどり", "かもめ", "ふくろう",
+    "つぐみ", "せきれい", "ヤマガラ", "カナリア",
+    "すばる", "三日月", "満月", "月影", "月夜", "星空", "星影", "流れ星", "天の川", "夜空", "青空", "夕空",
+    "朝焼け", "夕焼け", "夜明け", "月明かり", "星明かり", "ひかり",
+    "こもれび", "そよ風", "春風", "秋風", "潮風", "ゆうなぎ", "あさなぎ", "しぐれ", "小雨", "霧雨",
+    "夕立", "朝露", "かすみ", "おぼろ", "夕雲", "虹",
+    "せせらぎ", "さざなみ", "しおさい", "なぎさ", "波音", "水音", "泉", "小川", "しずく", "雨粒", "みなも", "なぎ",
+    "こだま", "こだち", "こみち", "野原", "砂浜", "木陰", "陽だまり", "ひなた", "夕暮れ", "新緑", "初雪", "小春",
+]
+
+
+def make_search_id():
+    alphabet = string.ascii_lowercase + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(5))
 
 
 st.markdown(
@@ -39,9 +62,14 @@ h1,h2,h3,p,div,button,input,textarea{font-family:"Hiragino Maru Gothic ProN","Yu
 def init_state():
     defaults = {
         "page": "新しい日記",
-        "display_name": "こもれび星",
+        "display_name": "",
+        "proposed_name": random.choice(NATURAL_NAMES),
+        "previous_names": [],
+        "onboarding_complete": False,
+        "user_uuid": str(uuid.uuid4()),
+        "search_id": make_search_id(),
         "icon": "116748_0(1).jpg",
-        "bio": "散歩と本と、静かな夜が好きです。",
+        "bio": "",
         "likes": ["散歩", "本", "喫茶店"],
         "letter_note": "返事はゆっくりでも大丈夫です。",
         "search_visible": True,
@@ -51,29 +79,77 @@ def init_state():
         "reaction_log": [],
         "reply_status": {},
         "sent_letters": [],
+        "thread_names": {"p_sumire": "すみれ", "p_komorebi_a": "こもれび"},
     }
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+    if "profile_text_v2" not in st.session_state:
+        if st.session_state.bio == "散歩と本と、静かな夜が好きです。":
+            st.session_state.bio = ""
+        st.session_state.profile_text_v2 = True
+    if st.session_state.display_name == "こもれび星":
+        st.session_state.display_name = ""
+        st.session_state.onboarding_complete = False
 
     if "diaries" not in st.session_state:
         st.session_state.diaries = [
-            {"id": 1, "name": "すみれの風", "icon": "116744_0(1).jpg", "when": "今日 9:10", "text": "朝の散歩で白い花を見つけました。名前は分からないけれど、風に揺れてきれいでした。", "photo": "116744_0(1).jpg", "scope": "みんな", "reaction": None},
-            {"id": 2, "name": "月とひばり", "icon": "116740_0(1).jpg", "when": "昨日 22:40", "text": "読みかけの本を、今夜やっと読み終えました。少し余韻にひたっています。", "photo": "116740_0(1).jpg", "scope": "みんな", "reaction": None},
-            {"id": 3, "name": "あさぐも", "icon": "116739_0(1).jpg", "when": "昨日 7:20", "text": "雲の形が大きな船みたいでした。", "photo": "116739_0(1).jpg", "scope": "みんな", "reaction": None},
+            {"id": 1, "author_id": "p_sumire", "name": "すみれ", "icon": "116744_0(1).jpg", "when": "今日 9:10", "text": "朝の散歩で白い花を見つけました。名前は分からないけれど、風に揺れてきれいでした。", "photo": "116744_0(1).jpg", "scope": "みんな", "reaction": None},
+            {"id": 2, "author_id": "p_komorebi_a", "name": "こもれび", "icon": "116740_0(1).jpg", "when": "昨日 22:40", "text": "読みかけの本を、今夜やっと読み終えました。少し余韻にひたっています。", "photo": "116740_0(1).jpg", "scope": "みんな", "reaction": None},
+            {"id": 3, "author_id": "p_asagumo", "name": "あさぐも", "icon": "116739_0(1).jpg", "when": "昨日 7:20", "text": "雲の形が大きな船みたいでした。", "photo": "116739_0(1).jpg", "scope": "みんな", "reaction": None},
         ]
     if "threads" not in st.session_state:
         st.session_state.threads = {
-            "すみれの風": [
+            "p_sumire": [
                 ("them", "この前教えてくれた本、読み始めました。", "昨日 20:12"),
                 ("me", "うれしい。急がず読んでみてください。", "昨日 21:03"),
                 ("them", "ありがとう。また感想を送ります。", "今日 8:42"),
             ],
-            "月とひばり": [("them", "週末、あの喫茶店に行きました。", "月曜 18:20")],
+            "p_komorebi_a": [("them", "週末、あの喫茶店に行きました。", "月曜 18:20")],
         }
 
 
 init_state()
+
+
+def onboarding():
+    logo = ASSETS / "01_________________________________1024(1).png"
+    if logo.exists():
+        st.image(str(logo), use_container_width=True)
+    st.markdown("<div class='center'><h2>あなたに、こんな名前はいかが？</h2></div>", unsafe_allow_html=True)
+    if not st.session_state.get("custom_name_mode", False):
+        st.markdown(f"<div class='hero'><h1>{safe(st.session_state.proposed_name)}</h1></div>", unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            if st.button("この名前にする", use_container_width=True):
+                st.session_state.display_name = st.session_state.proposed_name
+                st.session_state.onboarding_complete = True
+                st.rerun()
+        with c2:
+            if st.button("もうひとつ見る", use_container_width=True):
+                history = (st.session_state.previous_names + [st.session_state.proposed_name])[-12:]
+                choices = [name for name in NATURAL_NAMES if name not in history]
+                st.session_state.previous_names = history
+                st.session_state.proposed_name = random.choice(choices or NATURAL_NAMES)
+                st.rerun()
+        with c3:
+            if st.button("自分でつける", use_container_width=True):
+                st.session_state.custom_name_mode = True
+                st.rerun()
+    else:
+        custom = st.text_input("つけたい名前", placeholder="呼ばれたい名前を入力してください")
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("この名前にする", use_container_width=True, disabled=not custom.strip()):
+                st.session_state.display_name = custom.strip()
+                st.session_state.onboarding_complete = True
+                st.session_state.custom_name_mode = False
+                st.rerun()
+        with c2:
+            if st.button("名前の提案に戻る", use_container_width=True):
+                st.session_state.custom_name_mode = False
+                st.rerun()
+    st.caption("表示名はほかの人と同じでも大丈夫です。あとから変更できます。")
 
 
 def safe(value):
@@ -101,7 +177,7 @@ def navigate():
 
 
 def diary_card(post):
-    if post["name"] in st.session_state.muted_people or post["name"] in st.session_state.blocked_people:
+    if post.get("author_id") in st.session_state.muted_people or post.get("author_id") in st.session_state.blocked_people:
         return
     lower = post["text"].lower()
     if any(w.strip().lower() in lower for w in st.session_state.mute_words if w.strip()):
@@ -135,7 +211,7 @@ def new_diary():
         if not text.strip() and photo is None:
             st.warning("文章か写真のどちらかを入れてください。")
         else:
-            st.session_state.diaries.insert(0, {"id": int(time.time()*1000), "name": st.session_state.display_name, "icon": st.session_state.icon, "when": "たった今", "text": text or "（写真の日記）", "photo": None, "scope": scope, "reaction": None})
+            st.session_state.diaries.insert(0, {"id": int(time.time()*1000), "author_id": st.session_state.user_uuid, "name": st.session_state.display_name, "icon": st.session_state.icon, "when": "たった今", "text": text or "（写真の日記）", "photo": None, "scope": scope, "reaction": None})
             st.success("日記をしまいました。" if scope == "自分だけ" else "日記を公開しました。")
     st.markdown("### わたしの最近の日記")
     mine = [x for x in st.session_state.diaries if x["name"] == st.session_state.display_name]
@@ -154,7 +230,7 @@ def timeline():
             continue
         before = shown
         text = post["text"].lower()
-        if post["name"] not in st.session_state.muted_people | st.session_state.blocked_people and not any(w.lower() in text for w in st.session_state.mute_words if w):
+        if post.get("author_id") not in st.session_state.muted_people | st.session_state.blocked_people and not any(w.lower() in text for w in st.session_state.mute_words if w):
             shown += 1
         if before != shown:
             with st.container(border=True):
@@ -179,7 +255,8 @@ def letters():
     if not names:
         st.info("まだ、やりとりはありません。")
         return
-    person = st.selectbox("やりとりする人", names)
+    person = st.selectbox("やりとりする人", names, format_func=lambda person_id: st.session_state.thread_names.get(person_id, person_id))
+    person_name = st.session_state.thread_names.get(person, person)
     current = st.session_state.reply_status.get(person, "まだ決めない")
     st.markdown(f'<div class="reply">あなたの予定：{safe(STATUS[current])}</div>', unsafe_allow_html=True)
     choice = st.selectbox("返信の予定を伝える", list(STATUS), index=list(STATUS).index(current))
@@ -188,7 +265,7 @@ def letters():
         st.toast("返信予定をやわらかく伝えました。あとから変更できます。")
     st.markdown("#### やりとり")
     for who, body, when in st.session_state.threads[person]:
-        label = person if who == "them" else st.session_state.display_name
+        label = person_name if who == "them" else st.session_state.display_name
         css = "letter" if who == "them" else "letter mine"
         st.markdown(f'<div class="{css}"><div class="name">{safe(label)}</div><div class="body">{safe(body)}</div><div class="meta">{safe(when)}</div></div>', unsafe_allow_html=True)
     with st.form("letter_form", clear_on_submit=True):
@@ -209,10 +286,10 @@ def letters():
 
 
 PEOPLE = [
-    ("すみれ", "116744_0(1).jpg", "花と料理が好きです。", "お返事は夜になることが多いです。"),
-    ("すみれの風", "116747_0(1).jpg", "散歩中に見つけたものを日記にしています。", "ゆっくり考えて返します。"),
-    ("月とひばり", "116740_0(1).jpg", "本と静かな喫茶店が好きです。", "短い手紙もうれしいです。"),
-    ("あさぐも", "116739_0(1).jpg", "空の写真をよく撮ります。", "あとで、ええんやで。"),
+    {"uid": "p_sumire", "search_id": "s3m8a", "name": "すみれ", "icon": "116744_0(1).jpg", "bio": "花と料理が好きです。", "note": "お返事は夜になることが多いです。", "likes": "花、料理"},
+    {"uid": "p_komorebi_a", "search_id": "k7m2p", "name": "こもれび", "icon": "116740_0(1).jpg", "bio": "本と散歩が好きです。", "note": "ゆっくり考えて返します。", "likes": "本、散歩"},
+    {"uid": "p_komorebi_b", "search_id": "f4n9q", "name": "こもれび", "icon": "116747_0(1).jpg", "bio": "静かな喫茶店が好きです。", "note": "短い手紙もうれしいです。", "likes": "喫茶店、小鳥"},
+    {"uid": "p_asagumo", "search_id": "a2g6w", "name": "あさぐも", "icon": "116739_0(1).jpg", "bio": "空の写真をよく撮ります。", "note": "あとで、ええんやで。", "likes": "空、写真"},
 ]
 
 
@@ -223,17 +300,20 @@ def search_people():
     if not q:
         st.info("名前の一部を入力してください。")
         return
-    results = [p for p in PEOPLE if q.lower() in p[0].lower() and p[0] not in st.session_state.blocked_people]
+    query = q.strip().lower()
+    results = [p for p in PEOPLE if (query in p["name"].lower() or query == p["search_id"]) and p["uid"] not in st.session_state.blocked_people]
     if not results:
         st.info("見つかりませんでした。")
-    for name, icon, bio, note in results:
+    for person in results:
+        name, icon, bio, note = person["name"], person["icon"], person["bio"], person["note"]
         with st.container(border=True):
             c1, c2 = st.columns([1, 4])
             with c1: st.image(icon_path(icon), use_container_width=True)
             with c2:
-                st.markdown(f"**{name}**  \n{bio}  \n<span class='small'>お手紙について：{note}</span>", unsafe_allow_html=True)
-            if st.button("話しかける", key=f"talk_{name}"):
-                st.session_state.threads.setdefault(name, [])
+                st.markdown(f"**{name}**  \n{bio}  \n<span class='small'>好きなもの：{person['likes']}<br>お手紙について：{note}</span>", unsafe_allow_html=True)
+            if st.button("話しかける", key=f"talk_{person['uid']}"):
+                st.session_state.threads.setdefault(person["uid"], [])
+                st.session_state.thread_names[person["uid"]] = name
                 st.session_state.page = "おてがみ"
                 st.toast(f"{name}さんとの、おてがみを開きました。")
 
@@ -242,12 +322,24 @@ def profile():
     st.subheader("わたし")
     tabs = st.tabs(["プロフィール", "見るもの・距離", "リアクション"])
     with tabs[0]:
-        icon_files = [f"1167{i}_0(1).jpg" for i in range(39,49)]
+        icon_names = {
+            "116739_0(1).jpg": "青空と雲",
+            "116740_0(1).jpg": "月夜",
+            "116741_0(1).jpg": "星空",
+            "116742_0(1).jpg": "雨粒",
+            "116743_0(1).jpg": "海辺の真珠",
+            "116744_0(1).jpg": "白い花",
+            "116745_0(1).jpg": "朝の太陽",
+            "116746_0(1).jpg": "雪山",
+            "116747_0(1).jpg": "小鳥",
+            "116748_0(1).jpg": "若葉",
+        }
+        icon_files = list(icon_names)
         with st.form("profile_form"):
             name = st.text_input("名前", st.session_state.display_name)
-            icon = st.selectbox("自然アイコン", icon_files, index=icon_files.index(st.session_state.icon) if st.session_state.icon in icon_files else 0)
+            icon = st.selectbox("アイコン", icon_files, index=icon_files.index(st.session_state.icon) if st.session_state.icon in icon_files else 0, format_func=lambda filename: icon_names[filename])
             if icon_path(icon): st.image(icon_path(icon), width=120)
-            bio = st.text_area("ひとこと", st.session_state.bio)
+            bio = st.text_area("ひとこと", st.session_state.bio, placeholder="すきなことをひとことどうぞ")
             likes = st.text_input("好きなもの（最大5個・読点区切り）", "、".join(st.session_state.likes))
             note = st.text_area("お手紙についての一言", st.session_state.letter_note)
             visible = st.toggle("名前検索に表示する", st.session_state.search_visible)
@@ -266,7 +358,7 @@ def profile():
             st.session_state.mute_words = [x.strip() for x in words.splitlines() if x.strip()]
             st.success("保存しました。")
         st.markdown("#### ミュート・ブロック")
-        target = st.selectbox("相手", [p[0] for p in PEOPLE])
+        target = st.selectbox("相手", [p["uid"] for p in PEOPLE], format_func=lambda uid: next(p["name"] for p in PEOPLE if p["uid"] == uid))
         c1, c2 = st.columns(2)
         with c1:
             muted = target in st.session_state.muted_people
@@ -310,6 +402,10 @@ def garden_news():
     """)
     st.info("園長へのお手紙は将来追加予定です。公開コメント欄は設けません。")
 
+
+if not st.session_state.onboarding_complete:
+    onboarding()
+    st.stop()
 
 header()
 navigate()

@@ -357,10 +357,18 @@ def profile():
             "116748_0(1).jpg": "若葉",
         }
         icon_files = list(icon_names)
+        icon = st.selectbox(
+            "アイコン",
+            icon_files,
+            index=icon_files.index(st.session_state.icon) if st.session_state.icon in icon_files else 0,
+            format_func=lambda filename: icon_names[filename],
+            key="profile_icon_picker",
+        )
+        if icon_path(icon):
+            st.image(icon_path(icon), width=120)
+        st.caption("選ぶと、すぐに画像が切り替わります。保存するとプロフィールに反映されます。")
         with st.form("profile_form"):
             name = st.text_input("名前", st.session_state.display_name)
-            icon = st.selectbox("アイコン", icon_files, index=icon_files.index(st.session_state.icon) if st.session_state.icon in icon_files else 0, format_func=lambda filename: icon_names[filename])
-            if icon_path(icon): st.image(icon_path(icon), width=120)
             bio = st.text_area("ひとこと", st.session_state.bio, placeholder="すきなことをひとことどうぞ")
             likes = st.text_input("好きなもの（最大5個・読点区切り）", "、".join(st.session_state.likes))
             note = st.text_area("お手紙についての一言", st.session_state.letter_note)

@@ -36,25 +36,38 @@ def make_search_id():
 st.markdown(
     """
 <style>
-:root{--cream:#fbf7ed;--paper:#fffdf7;--green:#667a3c;--dark:#4b3a2d;--yellow:#f1c85b;--line:#e5ddca;--soft:#f2ecdc}
-.stApp{background:var(--cream);color:var(--dark)}
+:root{--cream:#f3eedf;--paper:#fbf7e9;--green:#667a3c;--dark:#3f3024;--yellow:#f1c85b;--line:#cfc3a7;--soft:#e8ecd8}
+.stApp{background:linear-gradient(180deg,#f7f2e6 0%,#eef0df 100%);color:var(--dark)}
 .block-container{max-width:720px;padding:1rem 1rem 6rem}
 h1,h2,h3,p,div,button,input,textarea{font-family:"Hiragino Maru Gothic ProN","Yu Gothic",sans-serif}
 [data-testid="stHeader"]{background:transparent}
-.hero{background:var(--paper);border:1px solid var(--line);border-radius:24px;padding:14px 18px;text-align:center;box-shadow:0 5px 18px #6b5a3a10}
+.hero{background:var(--paper);border:1px solid var(--line);border-radius:24px;padding:14px 18px;text-align:center;box-shadow:0 6px 18px #66553218}
 .hero img{max-width:390px;width:100%;border-radius:18px}.hero p{margin:.25rem;color:#766a59}.concept{font-size:1.05rem;font-weight:700;color:#53662f;margin-top:8px}
-.card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:14px 16px;margin:10px 0}
+.card{background:#faf5e7;border:1px solid var(--line);border-radius:18px;padding:14px 16px;margin:10px 0;box-shadow:0 3px 10px #6557350d}
 .name{font-weight:700;color:var(--dark)}.meta{font-size:.78rem;color:#8a806f}.body{line-height:1.8;margin:.55rem 0}
 .pill{display:inline-block;background:#eef1df;color:#58683b;padding:4px 10px;border-radius:999px;font-size:.82rem;margin:2px}
-.reply{background:#fff4ce;border:1px solid #ebd88e;border-radius:14px;padding:10px 12px;color:#6c5831}
+.reply{background:#f7e9b9;border:1px solid #d8bd68;border-radius:14px;padding:10px 12px;color:#59451f}
 .mine{border-left:5px solid var(--green)}
 .letter{border:1px solid #ded3bd;border-radius:18px;padding:14px;margin:10px 0;max-width:88%}
-.letter.theirs{background:#fffdf8;margin-right:12%}
-.letter.mine{background:#eef3df;border-color:#cbd6a9;margin-left:12%}
+.letter.theirs{background:#faf4e5;margin-right:12%}
+.letter.mine{background:#e2e9cc;border-color:#b5c38c;margin-left:12%}
 .direction{font-size:.76rem;font-weight:700;color:#6f7658;margin-bottom:5px}
+.delivery-stage{position:relative;height:118px;overflow:hidden;background:linear-gradient(180deg,#fffdf8,#f2f0df);border:1px solid #ded3bd;border-radius:20px;margin:14px 0 10px}
+.delivery-stage:after{content:"";position:absolute;left:0;right:0;bottom:22px;border-bottom:3px dotted #d5c9a8}
+.delivery-wani{position:absolute;z-index:2;left:8%;top:20px;font-size:58px;line-height:1;filter:drop-shadow(0 5px 4px #8b7a5928)}
+.delivery-mail{position:absolute;left:24px;top:-13px;font-size:27px;transform:rotate(-7deg)}
+.delivery-wani.walk{animation:techitechi 1.8s ease-in-out forwards}
+.delivery-note{position:absolute;z-index:3;left:0;right:0;bottom:2px;text-align:center;font-size:.78rem;color:#786d5d}
+@keyframes techitechi{0%{left:5%;transform:translateY(0) rotate(-2deg)}20%{transform:translateY(-5px) rotate(2deg)}40%{transform:translateY(0) rotate(-2deg)}60%{transform:translateY(-5px) rotate(2deg)}80%{transform:translateY(0) rotate(-2deg)}100%{left:76%;transform:translateY(-4px) rotate(2deg)}}
 .stButton>button,.stFormSubmitButton>button{border-radius:999px;border:0;background:var(--green);color:white;font-weight:700;min-height:42px}
 .stButton>button:hover,.stFormSubmitButton>button:hover{background:#53662f;color:white}
 [data-testid="stBottomBlockContainer"]{background:var(--cream)}
+.stTextInput input,.stTextArea textarea,[data-baseweb="select"]>div{background:#edf0e5!important;border:1px solid #c1c9ae!important;color:#3f3024!important}
+[data-testid="stFileUploaderDropzone"]{background:#eef0e2;border:1px dashed #aeb98f}
+[data-testid="stForm"]{background:#f8f3e6;border:1px solid #cfc3a7;border-radius:18px;padding:14px}
+[data-testid="stVerticalBlockBorderWrapper"]{background:#faf5e7;border-color:#cfc3a7!important;box-shadow:0 3px 10px #6557350d}
+[data-baseweb="tab-list"]{background:#e9eadb;border-radius:12px;padding:3px}
+[data-baseweb="tab"]{color:#504532}
 .small{font-size:.82rem;color:#817765}.center{text-align:center}
 </style>
 """,
@@ -254,6 +267,8 @@ STATUS = {
 
 def letters():
     st.subheader("おてがみ")
+    if st.session_state.pop("delivery_done", False):
+        st.success("ワニさんが手紙を届けました。")
     names = [n for n in st.session_state.threads if n not in st.session_state.blocked_people]
     if not names:
         st.info("まだ、やりとりはありません。")
@@ -275,20 +290,16 @@ def letters():
             css = "letter mine"
             direction = "あなたが送った手紙"
         st.markdown(f'<div class="{css}"><div class="direction">{safe(direction)}</div><div class="body">{safe(body)}</div><div class="meta">{safe(when)}</div></div>', unsafe_allow_html=True)
+    holder = st.empty()
     with st.form("letter_form", clear_on_submit=True):
         body = st.text_area("手紙を書く", placeholder="急がず、伝えたい言葉をどうぞ。", height=120)
         sent = st.form_submit_button("ワニさんに手紙をあずける")
     if sent and body.strip():
-        holder = st.empty()
-        holder.markdown('<div class="card center">✉️　🐊<br><span class="small">ワニさんが手紙を背中に乗せました</span></div>', unsafe_allow_html=True)
-        time.sleep(.45)
-        holder.markdown('<div class="card center">　　🐊💨<br><span class="small">てちてち……</span></div>', unsafe_allow_html=True)
-        time.sleep(.45)
+        holder.markdown('<div class="delivery-stage"><div class="delivery-wani walk"><span class="delivery-mail">✉️</span>🐊</div><div class="delivery-note">てちてち……手紙を届けています</div></div>', unsafe_allow_html=True)
+        time.sleep(1.9)
         st.session_state.threads[person].append(("me", body.strip(), datetime.now().strftime("今日 %H:%M")))
         st.session_state.reply_status[person] = "まだ決めない"
-        holder.empty()
-        st.success("手紙を届けました。")
-        time.sleep(.2)
+        st.session_state.delivery_done = True
         st.rerun()
 
 

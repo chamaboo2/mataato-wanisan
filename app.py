@@ -115,9 +115,9 @@ def init_state():
 init_state()
 
 
-def onboarding():
+def onboarding(show_logo=True):
     logo = ASSETS / "02_______________________1024(1).png"
-    if logo.exists():
+    if show_logo and logo.exists():
         left, middle, right = st.columns([1, 3, 1])
         with middle:
             st.image(str(logo), use_container_width=True)
@@ -209,7 +209,9 @@ def new_diary():
         scope = st.radio("公開範囲", ["みんな", "自分だけ"], horizontal=True)
         submitted = st.form_submit_button("日記をしまう")
     if submitted:
-        if not text.strip() and photo is None:
+        if not st.session_state.display_name.strip():
+            st.warning("日記を公開する前に、「わたし」で名前を決めてください。")
+        elif not text.strip() and photo is None:
             st.warning("文章か写真のどちらかを入れてください。")
         else:
             st.session_state.diaries.insert(0, {"id": int(time.time()*1000), "author_id": st.session_state.user_uuid, "name": st.session_state.display_name, "icon": st.session_state.icon, "when": "たった今", "text": text or "（写真の日記）", "photo": None, "scope": scope, "reaction": None})
@@ -327,6 +329,10 @@ def profile():
     st.subheader("わたし")
     tabs = st.tabs(["プロフィール", "見るもの・距離", "リアクション"])
     with tabs[0]:
+        if not st.session_state.display_name.strip():
+            st.info("名前は、ここでゆっくり決められます。")
+            onboarding(show_logo=False)
+            st.markdown("---")
         icon_names = {
             "116739_0(1).jpg": "青空と雲",
             "116740_0(1).jpg": "月夜",
@@ -407,10 +413,6 @@ def garden_news():
     """)
     st.info("園長へのお手紙は将来追加予定です。公開コメント欄は設けません。")
 
-
-if not st.session_state.onboarding_complete:
-    onboarding()
-    st.stop()
 
 header()
 navigate()

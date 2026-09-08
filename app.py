@@ -48,7 +48,10 @@ h1,h2,h3,p,div,button,input,textarea{font-family:"Hiragino Maru Gothic ProN","Yu
 .pill{display:inline-block;background:#eef1df;color:#58683b;padding:4px 10px;border-radius:999px;font-size:.82rem;margin:2px}
 .reply{background:#fff4ce;border:1px solid #ebd88e;border-radius:14px;padding:10px 12px;color:#6c5831}
 .mine{border-left:5px solid var(--green)}
-.letter{background:#fffdf8;border:1px solid #ded3bd;border-radius:18px;padding:14px;margin:9px 0}
+.letter{border:1px solid #ded3bd;border-radius:18px;padding:14px;margin:10px 0;max-width:88%}
+.letter.theirs{background:#fffdf8;margin-right:12%}
+.letter.mine{background:#eef3df;border-color:#cbd6a9;margin-left:12%}
+.direction{font-size:.76rem;font-weight:700;color:#6f7658;margin-bottom:5px}
 .stButton>button,.stFormSubmitButton>button{border-radius:999px;border:0;background:var(--green);color:white;font-weight:700;min-height:42px}
 .stButton>button:hover,.stFormSubmitButton>button:hover{background:#53662f;color:white}
 [data-testid="stBottomBlockContainer"]{background:var(--cream)}
@@ -265,9 +268,13 @@ def letters():
         st.toast("返信予定をやわらかく伝えました。あとから変更できます。")
     st.markdown("#### やりとり")
     for who, body, when in st.session_state.threads[person]:
-        label = person_name if who == "them" else st.session_state.display_name
-        css = "letter" if who == "them" else "letter mine"
-        st.markdown(f'<div class="{css}"><div class="name">{safe(label)}</div><div class="body">{safe(body)}</div><div class="meta">{safe(when)}</div></div>', unsafe_allow_html=True)
+        if who == "them":
+            css = "letter theirs"
+            direction = f"{person_name}さんから届いた手紙"
+        else:
+            css = "letter mine"
+            direction = "あなたが送った手紙"
+        st.markdown(f'<div class="{css}"><div class="direction">{safe(direction)}</div><div class="body">{safe(body)}</div><div class="meta">{safe(when)}</div></div>', unsafe_allow_html=True)
     with st.form("letter_form", clear_on_submit=True):
         body = st.text_area("手紙を書く", placeholder="急がず、伝えたい言葉をどうぞ。", height=120)
         sent = st.form_submit_button("ワニさんに手紙をあずける")
